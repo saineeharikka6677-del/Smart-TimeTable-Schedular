@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Timetable App</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #f4f4f9;
+            color: #333;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .box {
+            border: 2px solid #333;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+            background-color: #fff;
+            display: inline-block;
+            width: 70%;
+            min-width: 500px;
+        }
+
+        .header {
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .menu {
+            margin-top: 20px;
+            font-size: 16px;
+        }
+
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+            text-align: center;
+        }
+
+        .button:hover {
+            background-color: #45a049;
+        }
+
+        pre {
+            text-align: left;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .footer {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="header">
+            College Timetable App
+        </div>
+
+        <div class="menu">
+            <button class="button" onclick="addSession()">Add a Session</button>
+            <button class="button" onclick="editSession()">Edit a Session</button>
+            <button class="button" onclick="deleteSession()">Delete a Session</button>
+            <button class="button" onclick="searchSession()">Search Sessions</button>
+            <button class="button" onclick="displaySessions()">View All Sessions</button>
+            <button class="button" onclick="exitApp()">Exit</button>
+        </div>
+    </div>
+
+    <div id="output"></div>
+
+    <div class="footer">
+        <p>Created by Sai Charan</p>
+    </div>
+
+    <script>
+        class TimeSlot {
+            constructor(sh = 0, sm = 0, eh = 0, em = 0) {
+                this.startHour = sh;
+                this.startMin = sm;
+                this.endHour = eh;
+                this.endMin = em;
+            }
+
+            isValid() {
+                if (this.startHour < 0 || this.startHour > 23 || this.endHour < 0 || this.endHour > 23 ||
+                    this.startMin < 0 || this.startMin > 59 || this.endMin < 0 || this.endMin > 59) {
+                    return false;
+                }
+                if (this.startHour > this.endHour || (this.startHour === this.endHour && this.startMin >= this.endMin)) {
+                    return false;
+                }
+                return true;
+            }
+
+            conflictsWith(other) {
+                return !(this.endHour < other.startHour || 
+                        (this.endHour === other.startHour && this.endMin <= other.startMin) ||
+                        this.startHour > other.endHour || 
+                        (this.startHour === other.endHour && this.startMin >= other.endMin));
+            }
+
+            toString() {
+                return `${this.startHour.toString().padStart(2, '0')}:${this.startMin.toString().padStart(2, '0')}-` +
+                    `${this.endHour.toString().padStart(2, '0')}:${this.endMin.toString().padStart(2, '0')}`;
+            }
+        }
+
+        class Session {
+            constructor(id = 0, subject = '', faculty = '', day = 0, timeSlot = new TimeSlot()) {
+                this.id = id;
+                this.subject = subject;
+                this.faculty = faculty;
+                this.day = day;
+                this.timeSlot = timeSlot;
+            }
+        }
+
+        class Scheduler {
+            constructor() {
+                this.sessions = new Map();
+                this.currentID = 0;
+            }
+
+            isConflict(day, timeSlot) {
+                for (let session of this.sessions.values()) {
+                    if (session.day === day && session.timeSlot.conflictsWith(timeSlot)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            addSession() {
+                const subject = prompt("Enter subject name: ");
+                const faculty = prompt("Enter faculty name: ");
+                const day = parseInt(prompt("Enter day (0=Monday, ..., 5=Saturday): "));
+                const [startHour, startMin] = prompt("Enter start time (HH MM in 24-hour format): ").split(' ').map(Number);
+                const [endHour, endMin] = prompt("Enter end time (HH MM in 24-hour format): ").split(' ').map(Number);
+
+                const timeSlot = new TimeSlot(startHour, startMin, endHour, endMin);
+
+                if (!timeSlot.isValid()) {
+                    alert("❌ Error: Invalid time format. Please ensure end time is after start time.");
+                    return;
+                }
+
+                if (this.isConflict(day, timeSlot)) {
+                    alert("❌ Error: This time slot conflicts with an existing session.");
+                    return;
+                }
+
+                this.sessions.set(++this.currentID, new Session(this.currentID, subject, faculty, day, timeSlot));
+                this.displayOutput(`✅ Session added successfully with ID: ${this.currentID}`);
+            }
+
+            editSession() {
+                const id = parseInt(prompt("Enter session ID to edit: "));
+                if (!this.sessions.has(id)) {
+                    alert("❌ Session not found.");
+                    return;
+                }
+
+                const session = this.sessions.get(id);
+                session.subject = prompt("Enter new subject name: ");
+                session.faculty = prompt("Enter new faculty name: ");
+                session.day = parseInt(prompt("Enter new day (0=Monday, ..., 5=Saturday): "));
+                const [startHour, startMin] = prompt("Enter new start time (HH MM in 24-hour format): ").split(' ').map(Number);
+                const [endHour, endMin] = prompt("Enter new end time (HH MM in 24-hour format): ").split(' ').map(Number);
+
+                session.timeSlot = new TimeSlot(startHour, startMin, endHour, endMin);
+
+                if (!session.timeSlot.isValid()) {
+                    alert("❌ Error: Invalid time format. Changes were not applied.");
+                    return;
+                }
+
+                if (this.isConflict(session.day, session.timeSlot)) {
+                    alert("❌ Error: This time slot conflicts with an existing session. Changes were not applied.");
+                    return;
+                }
+
+                this.displayOutput("✅ Session updated successfully!");
+            }
+
+            deleteSession() {
+                const id = parseInt(prompt("Enter session ID to delete: "));
+                if (this.sessions.delete(id)) {
+                    this.displayOutput("✅ Session deleted successfully!");
+                } else {
+                    this.displayOutput("❌ Session not found.");
+                }
+            }
+
+            searchSession() {
+                const query = prompt("Enter subject or faculty name to search: ");
+                let result = "+----+----------------------+----------------------+-------+----------------+\n";
+                result += "| ID | Subject              | Faculty              | Day   | Time           |\n";
+                result += "+----+----------------------+----------------------+-------+----------------+\n";
+
+                for (let session of this.sessions.values()) {
+                    if (session.subject.includes(query) || session.faculty.includes(query)) {
+                        result += `| ${String(session.id).padStart(2, ' ')} | ${session.subject.padEnd(20)} | ` +
+                            `${session.faculty.padEnd(20)} | ${String(session.day).padStart(5, ' ')} | ` +
+                            `${session.timeSlot.toString().padEnd(16)} |\n`;
+                    }
+                }
+
+                result += "+----+----------------------+----------------------+-------+----------------+\n";
+                this.displayOutput(result);
+            }
+
+            displaySessions() {
+                let result = "\n📋 All Sessions:\n";
+                if (this.sessions.size === 0) {
+                    this.displayOutput("No sessions available.");
+                    return;
+                }
+
+                result += "+----+----------------------+----------------------+-------+----------------+\n";
+                result += "| ID | Subject              | Faculty              | Day   | Time           |\n";
+                result += "+----+----------------------+----------------------+-------+----------------+\n";
+
+                for (let session of this.sessions.values()) {
+                    result += `| ${String(session.id).padStart(2, ' ')} | ${session.subject.padEnd(20)} | ` +
+                        `${session.faculty.padEnd(20)} | ${String(session.day).padStart(5, ' ')} | ` +
+                        `${session.timeSlot.toString().padEnd(16)} |\n`;
+                }
+
+                result += "+----+----------------------+----------------------+-------+----------------+\n";
+                this.displayOutput(result);
+            }
+
+            displayOutput(message) {
+                document.getElementById("output").innerText = message;
+            }
+        }
+
+        const scheduler = new Scheduler();
+
+        function addSession() {
+            scheduler.addSession();
+        }
+
+        function editSession() {
+            scheduler.editSession();
+        }
+
+        function deleteSession() {
+            scheduler.deleteSession();
+        }
+
+        function searchSession() {
+            scheduler.searchSession();
+        }
+
+        function displaySessions() {
+            scheduler.displaySessions();
+        }
+
+        function exitApp() {
+            alert("👋 Exiting app. Best of luck in the competition!");
+        }
+    </script>
+</body>
+</html>
